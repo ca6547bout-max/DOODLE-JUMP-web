@@ -1,0 +1,152 @@
+                super(x, y, width, height, '#27ae60');
+            }
+
+            // Sin gravedad para plataformas
+            update() {
+                this.draw();
+            }
+        }
+
+        // Clase Goomba
+        class Goomba extends GameObject {
+            constructor(x, y) {
+                super(x, y, 20, 20, '#8e44ad');
+                this.speed = 1;
+                this.direction = 1; // 1 = derecha, -1 = izquierda
+            }
+
+            draw() {
+                // Cuerpo
+                super.draw();
+                // Ojos
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(this.x + 3, this.y + 3, 5, 5);
+                ctx.fillRect(this.x + 12, this.y + 3, 5, 5);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(this.x + 5, this.y + 5, 2, 2);
+                ctx.fillRect(this.x + 14, this.y + 5, 2, 2);
+            }
+
+            update() {
+                this.draw();
+                // Movimiento horizontal
+                this.x += this.speed * this.direction;
+                // Cambiar dirección al chocar con bordes
+                if (this.x < 0 || this.x + this.width > canvas.width) this.direction *= -1;
+            }
+        }
+
+        // Inicializar objetos del juego
+        const mario = new Mario(50, 200);
+        const platforms = [
+            new Platform(150, 220, 100, 10),
+            new Platform(350, 180, 80, 10),
+            new Platform(500, 140, 60, 10)
+        ];
+        const goombas = [
+            new Goomba(200, 200),
+            new Goomba(400, 160)
+        ];
+
+        // Control de teclado
+        const keys = {
+            left: false,
+            right: false,
+            up: false
+        };
+
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft': keys.left = true; break;
+                case 'ArrowRight': keys.right = true; break;
+                case 'ArrowUp': mario.jump(); break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft': keys.left = false; break;
+                case 'ArrowRight': keys.right = false; break;
+            }
+        });
+
+        // Control táctil (para móviles)
+        canvas.addEventListener('touchstart', (e) => {
+            const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            if (touchX < canvas.width / 2) {
+                keys.left = true;
+                keys.right = false;
+            } else {
+                keys.right = true;
+                keys.left = false;
+                mario.jump();
+            }
+        });
+
+        canvas.addEventListener('touchend', () => {
+            keys.left = false;
+            keys.right = false;
+        });
+
+        // Bucle principal del juego
+        function gameLoop() {
+            requestAnimationFrame(gameLoop);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dibujar suelo
+            ctx.fillStyle = '#d6ba68';
+            ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+
+            // Actualizar Mario
+            mario.velocityX = 0;
+            if (keys.left) mario.velocityX = -mario.speed;
+            if (keys.right) mario.velocityX = mario.speed;
+            mario.update();
+
+            // Actualizar plataformas y comprobar colisiones
+            platforms.forEach(platform => {
+                platform.update();
+                if (mario.collidesWith(platform)) {
+                    // Colisión desde arriba
+                    if (mario.velocityY > 0 && mario.y + mario.height <= platform.y + 10) {
+                        mario.y = platform.y - mario.height;
+                        mario.velocityY = 0;
+                        mario.onGround = true;
+                    }
+                    // Colisión desde los lados o abajo
+                    else if (mario.velocityX !== 0 || mario.velocityY < 0) {
+                        if (mario.x + mario.width > platform.x && mario.x < platform.x) {
+                            mario.x = platform.x - mario.width;
+                        } else if (mario.x < platform.x + platform.width && mario.x + mario.width > platform.x + platform.width) {
+                            mario.x = platform.x + platform.width;
+                        } else if (mario.velocityY < 0) {
+                            mario.velocityY = 0;
+                        }
+                    }
+                }
+            });
+
+            // Actualizar Goombas y comprobar colisiones
+            goombas.forEach((goomba, index) => {
+                goomba.update();
+                if (mario.collidesWith(goomba)) {
+                    // Mario salta sobre Goomba
+                    if (mario.velocityY > 0) {
+                        mario.velocityY = -mario.jumpForce / 2;
+                        goombas.splice(index, 1); // Eliminar Goomba
+                    } else {
+                        // Goomba golpea a Mario (reiniciar posición)
+                        mario.x = 50;
+                        mario.y = 200;
+                        mario.velocityX = 0;
+                        mario.velocityY = 0;
+                    }
+                }
+            });
+        }
+
+        // Iniciar el juego
+        gameLoop();
+    </script>
+</body>
+</html>
